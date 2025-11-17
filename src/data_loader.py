@@ -11,7 +11,7 @@ from config import (
     TRAIN_RATIO,
     VAL_RATIO,
     TEST_RATIO,
-    PSEUDO_DREAM_ONLY,
+    IMAGE_ONLY_SUBSET,
     FEW_SHOT_REFERENCE_SPLITS,
 )
 
@@ -36,9 +36,9 @@ class LAGDataLoader:
         if 'path' not in self.labels_df.columns and 'filepath' in self.labels_df.columns:
             self.labels_df = self.labels_df.rename(columns={'filepath': 'path'})
 
-        # Optional: filter to Pseudo Dream > image subset when possible
-        if PSEUDO_DREAM_ONLY:
-            self._apply_pseudo_dream_filter()
+        # Optional: filter to image-only subset when possible
+        if IMAGE_ONLY_SUBSET:
+            self._apply_image_only_filter()
 
         # Ensure split column exists
         self._ensure_splits()
@@ -61,8 +61,8 @@ class LAGDataLoader:
         
         return pd.DataFrame(image_data)
 
-    def _apply_pseudo_dream_filter(self):
-        """Filter rows to Pseudo Dream > image subset when metadata allows.
+    def _apply_image_only_filter(self):
+        """Filter rows to image-only subset when metadata allows.
 
         Heuristics:
         - If a column named 'modality' or 'type' exists, keep rows where value == 'image'.

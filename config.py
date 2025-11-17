@@ -21,9 +21,9 @@ TRAIN_RATIO = 0.6
 VAL_RATIO = 0.1
 TEST_RATIO = 0.3  # Only test on this split
 
-# Data filtering per professor guidance
+# Data filtering option
 # If labels.csv has a column like 'folder' or 'source', filter rows where value == 'image'
-PSEUDO_DREAM_ONLY = True
+IMAGE_ONLY_SUBSET = True
 
 # Few-shot/in-context references come from train+val; zero-shot uses none
 FEW_SHOT_REFERENCE_SPLITS = ["train", "val"]

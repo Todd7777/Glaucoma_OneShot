@@ -80,7 +80,7 @@ python main.py --sample-size 100
 
 ## 📦 Data Protocols
 
-- **Subset**: Use only Pseudo Dream > image data
+- **Subset**: Use only the image-only subset of the data
 - **Split**: Deterministic 60/10/30 for train/val/test (stratified when labels available)
 - **Zero-Shot**: Evaluate only on the 30% test split with unified indicators
 - **Few-/One-Shot (In-Context)**: Draw a few references from train+val, evaluate on the test split

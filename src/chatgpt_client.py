@@ -36,7 +36,7 @@ class ChatGPTVisionClient:
         content = [
             {
                 "type": "text",
-                "text": "Here are reference images for glaucoma diagnosis:\n\nNORMAL RETINAS (Label: 0):"
+                "text": "Here are reference images for glaucoma diagnosis. Use the same diagnostic criteria across one-shot and zero-shot conditions.\n\nNORMAL RETINAS (Label: 0):"
             }
         ]
         
@@ -68,6 +68,13 @@ class ChatGPTVisionClient:
             "text": """\n\nNow, please analyze the following TEST IMAGE and classify it as either:
             - 0 (Normal/Negative for glaucoma)
             - 1 (Glaucomatous/Suspicious for glaucoma)
+            
+            Look for key glaucoma indicators such as:
+            - Optic disc cupping (increased cup-to-disc ratio)
+            - Focal neuroretinal rim thinning or notching
+            - Retinal nerve fiber layer defects
+            - Beta-zone peripapillary atrophy
+            - Vessel bayoneting
             
             Please provide:
             1. Your classification (0 or 1)
@@ -116,9 +123,10 @@ class ChatGPTVisionClient:
                         
                         Look for key glaucoma indicators such as:
                         - Optic disc cupping (increased cup-to-disc ratio)
-                        - Neuroretinal rim thinning
+                        - Focal neuroretinal rim thinning or notching
                         - Retinal nerve fiber layer defects
-                        - Asymmetry between eyes
+                        - Beta-zone peripapillary atrophy
+                        - Vessel bayoneting
                         
                         Please provide:
                         1. Your classification (0 or 1)

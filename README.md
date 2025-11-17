@@ -55,9 +55,17 @@ python main.py --sample-size 100
 ## 📊 Methodology
 
 ### Experimental Design
-1. **Zero-Shot Baseline**: ChatGPT analyzes images without prior examples
-2. **One-Shot Intervention**: ChatGPT receives 3 reference images per class before analysis
-3. **Controlled Comparison**: Same test set, standardized prompts, identical evaluation metrics
+1. **Zero-Shot (Test-Time) Baseline**: ChatGPT analyzes test images without references
+2. **Few-/One-Shot (In-Context) Intervention**: ChatGPT receives few reference images from train/val (default 3 per class) before analyzing test images
+3. **Controlled Comparison**: Same test split, standardized prompts, identical evaluation metrics
+
+### Prompting Criteria (Unified)
+- Look for key glaucoma indicators such as:
+  - Optic disc cupping (increased cup-to-disc ratio)
+  - Focal neuroretinal rim thinning or notching
+  - Retinal nerve fiber layer defects
+  - Beta-zone peripapillary atrophy
+  - Vessel bayoneting
 
 ### Evaluation Metrics
 - **Primary**: Diagnostic accuracy, sensitivity, specificity
@@ -69,6 +77,14 @@ python main.py --sample-size 100
 - Confidence distribution analysis
 - Cost-effectiveness assessment
 - Publication-ready visualizations
+
+## 📦 Data Protocols
+
+- **Subset**: Use only Pseudo Dream > image data
+- **Split**: Deterministic 60/10/30 for train/val/test (stratified when labels available)
+- **Zero-Shot**: Evaluate only on the 30% test split with unified indicators
+- **Few-/One-Shot (In-Context)**: Draw a few references from train+val, evaluate on the test split
+- **SFT (Qwen-LLaVA / LLaMA)**: Use train+val for tuning, test for final evaluation
 
 ## 🎯 Clinical Significance
 

@@ -4,7 +4,16 @@ import numpy as np
 from PIL import Image
 from typing import List, Tuple, Dict
 import random
-from config import DATA_DIR, MAX_IMAGE_SIZE, RANDOM_SEED
+from config import (
+    DATA_DIR,
+    MAX_IMAGE_SIZE,
+    RANDOM_SEED,
+    TRAIN_RATIO,
+    VAL_RATIO,
+    TEST_RATIO,
+    PSEUDO_DREAM_ONLY,
+    FEW_SHOT_REFERENCE_SPLITS,
+)
 
 class LAGDataLoader:
     """Data loader for the LAG glaucoma dataset."""
@@ -23,6 +32,16 @@ class LAGDataLoader:
         else:
             # If no labels file, try to infer from directory structure
             self.labels_df = self._create_labels_from_structure()
+        # Normalize columns
+        if 'path' not in self.labels_df.columns and 'filepath' in self.labels_df.columns:
+            self.labels_df = self.labels_df.rename(columns={'filepath': 'path'})
+
+        # Optional: filter to Pseudo Dream > image subset when possible
+        if PSEUDO_DREAM_ONLY:
+            self._apply_pseudo_dream_filter()
+
+        # Ensure split column exists
+        self._ensure_splits()
         return self.labels_df
     
     def _create_labels_from_structure(self) -> pd.DataFrame:
@@ -41,34 +60,95 @@ class LAGDataLoader:
                     })
         
         return pd.DataFrame(image_data)
+
+    def _apply_pseudo_dream_filter(self):
+        """Filter rows to Pseudo Dream > image subset when metadata allows.
+
+        Heuristics:
+        - If a column named 'modality' or 'type' exists, keep rows where value == 'image'.
+        - Else if a column named 'folder' or 'subset' exists, keep rows where value == 'image'.
+        - Else if file path contains '/image/' or '\\image\\', keep.
+        If none of the above applies, keep all rows.
+        """
+        df = self.labels_df
+        kept = None
+        for col in ['modality', 'type', 'folder', 'subset', 'source']:
+            if col in df.columns:
+                kept = df[df[col].astype(str).str.lower() == 'image']
+                break
+        if kept is None and 'path' in df.columns:
+            mask = df['path'].astype(str).str.contains(r"[\\/]+image[\\/]+", regex=True)
+            kept = df[mask]
+        if kept is not None and len(kept) > 0:
+            self.labels_df = kept.reset_index(drop=True)
+
+    def _ensure_splits(self):
+        """Create deterministic train/val/test splits if not present."""
+        df = self.labels_df
+        if 'split' in df.columns:
+            return
+        rng = np.random.default_rng(RANDOM_SEED)
+        df = df.sample(frac=1.0, random_state=RANDOM_SEED).reset_index(drop=True)
+
+        # Stratify by label if available
+        if 'label' in df.columns:
+            parts = []
+            for label_value, g in df.groupby('label', sort=False):
+                n = len(g)
+                n_train = int(round(n * TRAIN_RATIO))
+                n_val = int(round(n * VAL_RATIO))
+                # ensure total does not exceed
+                n_train = min(n_train, n)
+                n_val = min(n_val, max(0, n - n_train))
+                n_test = n - n_train - n_val
+                g = g.reset_index(drop=True)
+                g.loc[: n_train - 1, 'split'] = 'train'
+                g.loc[n_train : n_train + n_val - 1, 'split'] = 'val'
+                g.loc[n_train + n_val :, 'split'] = 'test'
+                parts.append(g)
+            df = pd.concat(parts, ignore_index=True)
+        else:
+            n = len(df)
+            n_train = int(round(n * TRAIN_RATIO))
+            n_val = int(round(n * VAL_RATIO))
+            df.loc[: n_train - 1, 'split'] = 'train'
+            df.loc[n_train : n_train + n_val - 1, 'split'] = 'val'
+            df.loc[n_train + n_val :, 'split'] = 'test'
+
+        self.labels_df = df
     
-    def get_reference_images(self, num_per_class: int = 3) -> Dict[int, List[str]]:
-        """Select reference images for each class."""
+    def get_reference_images(self, num_per_class: int = 3, splits: List[str] = None) -> Dict[int, List[str]]:
+        """Select reference images for each class from specified splits (defaults to train+val)."""
         if self.labels_df is None:
             self.load_labels()
-            
+        if splits is None:
+            splits = FEW_SHOT_REFERENCE_SPLITS
+
+        df = self.labels_df
+        if 'split' in df.columns and splits:
+            df = df[df['split'].isin(splits)]
+
         reference_images = {}
-        
         for label in [0, 1]:  # 0: normal, 1: glaucoma
-            class_images = self.labels_df[self.labels_df['label'] == label]['path'].tolist()
+            class_images = df[df['label'] == label]['path'].tolist()
             if len(class_images) >= num_per_class:
                 reference_images[label] = random.sample(class_images, num_per_class)
             else:
                 reference_images[label] = class_images
-                
         return reference_images
     
     def get_test_images(self, sample_size: int = 100) -> List[Tuple[str, int]]:
-        """Get test images with their labels."""
+        """Get test images with their labels strictly from the test split."""
         if self.labels_df is None:
             self.load_labels()
-            
+        df = self.labels_df
+        if 'split' in df.columns:
+            df = df[df['split'] == 'test']
         # Sample images for testing
-        if len(self.labels_df) > sample_size:
-            test_df = self.labels_df.sample(n=sample_size, random_state=RANDOM_SEED)
+        if len(df) > sample_size:
+            test_df = df.sample(n=sample_size, random_state=RANDOM_SEED)
         else:
-            test_df = self.labels_df
-            
+            test_df = df
         return [(row['path'], row['label']) for _, row in test_df.iterrows()]
     
     def preprocess_image(self, image_path: str) -> Image.Image:
